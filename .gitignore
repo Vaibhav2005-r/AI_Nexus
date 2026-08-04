@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Databases & Vector Stores
+research_memory.db
+qdrant_data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

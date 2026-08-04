@@ -25,266 +25,66 @@ export default function App() {
   const activeSession = sessions.find((s) => s.id === activeSessionId) || null;
 
   // Function to create and simulate a new research session
-  const handleStartResearch = (
+  const handleStartResearch = async (
     prompt: string,
     depth: 'Fast' | 'Deep' | 'Exhaustive',
     deepWeb: boolean,
     sourcesFilter: string[]
   ) => {
-    const newSessionId = `session-${Date.now()}`;
-    const title = prompt.length > 50 ? prompt.slice(0, 48) + '...' : prompt;
-
-    const initialSteps: AgentStep[] = [
-      {
-        id: 's-1',
-        type: 'planner',
-        title: 'Strategy Formulation & Knowledge Mapping',
-        description: 'Analyzing research objective and establishing domain constraints...',
-        status: 'running',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        details: {
-          strategy: [
-            'Deconstruct analytical dimensions and technical milestones',
-            'Cross-examine primary literature, SEC filings, and preprint servers',
-            'Map critical material and economic parity bottlenecks',
-          ],
-        },
-      },
-      {
-        id: 's-2',
-        type: 'decomposer',
-        title: 'Task Decomposition into Sub-Queries',
-        description: 'Generating parallel queries across specialized search indexes...',
-        status: 'pending',
-        subQueries: [
-          { id: 'sq-1', query: `${prompt.slice(0, 35)} benchmark trajectory 2026-2030`, status: 'pending' },
-          { id: 'sq-2', query: `${prompt.slice(0, 35)} cost per unit economic parity`, status: 'pending' },
-          { id: 'sq-3', query: `${prompt.slice(0, 35)} supply chain precursor bottlenecks`, status: 'pending' },
-          { id: 'sq-4', query: `${prompt.slice(0, 35)} peer-reviewed lab test validation`, status: 'pending' },
-        ],
-      },
-      {
-        id: 's-3',
-        type: 'search',
-        title: 'Parallel Retrieval & Ingestion',
-        description: 'Scanning sources via Tavily, ArXiv, and Financial Databases...',
-        status: 'pending',
-      },
-      {
-        id: 's-4',
-        type: 'verifier',
-        title: 'Cross-Verification & Anti-Hallucination Audit',
-        description: 'Cross-referencing quantitative claims against primary literature...',
-        status: 'pending',
-      },
-      {
-        id: 's-5',
-        type: 'report',
-        title: 'Synthesis & Cited Report Generation',
-        description: 'Drafting executive report with charts and inline citations...',
-        status: 'pending',
-      },
-    ];
-
-    const newSession: ResearchSession = {
-      id: newSessionId,
-      title,
-      prompt,
-      createdAt: new Date().toISOString(),
-      timeCategory: 'Today',
-      depth,
-      sourcesFilter,
-      deepWebEnabled: deepWeb,
-      status: 'running',
-      currentStepIndex: 0,
-      steps: initialSteps,
-      citations: [],
-    };
-
-    setSessions((prev) => [newSession, ...prev]);
-    setActiveSessionId(newSessionId);
-
-    // Run Simulation Timeline
-    runAgentSimulation(newSessionId, prompt);
-  };
-
-  const runAgentSimulation = (sessionId: string, prompt: string) => {
-    const speedMultiplier = settings.simulationSpeed === 'instant' ? 0.05 : settings.simulationSpeed === '2x' ? 0.5 : 1;
-    const stepDelay = 1200 * speedMultiplier;
-
-    // Helper to update session state
-    const updateSessionStep = (stepIdx: number, stepUpdate: Partial<AgentStep>, sessionUpdate?: Partial<ResearchSession>) => {
-      setSessions((prevSessions) =>
-        prevSessions.map((s) => {
-          if (s.id !== sessionId) return s;
-          const updatedSteps = [...s.steps];
-          updatedSteps[stepIdx] = { ...updatedSteps[stepIdx], ...stepUpdate };
-          return {
-            ...s,
-            steps: updatedSteps,
-            currentStepIndex: stepIdx,
-            ...sessionUpdate,
-          };
-        })
-      );
-    };
-
-    // Step 0: Planner finishes -> Step 1 Decomposer starts
-    setTimeout(() => {
-      updateSessionStep(0, { status: 'completed', durationMs: 780 });
-      updateSessionStep(1, {
-        status: 'running',
-        subQueries: [
-          { id: 'sq-1', query: `${prompt.slice(0, 30)} quantitative metrics 2026`, status: 'completed', resultsCount: 9 },
-          { id: 'sq-2', query: `${prompt.slice(0, 30)} commercial scaling cost curve`, status: 'completed', resultsCount: 7 },
-          { id: 'sq-3', query: `${prompt.slice(0, 30)} supply chain bottlenecks`, status: 'completed', resultsCount: 6 },
-          { id: 'sq-4', query: `${prompt.slice(0, 30)} peer-reviewed journal papers`, status: 'completed', resultsCount: 11 },
-        ],
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/research`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, depth, deepWebEnabled: deepWeb, sourcesFilter, domainMode: 'General' }),
       });
-    }, stepDelay * 1);
+      
+      if (!res.ok) {
+        console.error("Failed to start research");
+        return;
+      }
+      
+      const session: ResearchSession = await res.json();
+      setSessions((prev) => [session, ...prev]);
+      setActiveSessionId(session.id);
 
-    // Step 1: Decomposer finishes -> Step 2 Search starts
-    setTimeout(() => {
-      updateSessionStep(1, { status: 'completed', durationMs: 1050 });
-      updateSessionStep(2, {
-        status: 'running',
-        details: {
-          sourcesScanned: 24,
-          logs: [
-            '[Tavily API] Fetched 14 authoritative web indexes with relevance > 0.89',
-            '[ArXiv Engine] Parsing paper 2603.0912: "Technical Breakthrough Analysis"',
-            '[Financial Index] Extracting 2026 Industry Survey metrics',
-          ],
-        },
+      const eventSource = new EventSource(`http://localhost:8000/api/v1/research/${session.id}/stream`);
+
+      eventSource.addEventListener('step_update', (e) => {
+        const { stepIndex, step } = JSON.parse(e.data);
+        setSessions((prevSessions) =>
+          prevSessions.map((s) => {
+            if (s.id !== session.id) return s;
+            const updatedSteps = [...s.steps];
+            const existingIndex = updatedSteps.findIndex(existing => existing.id === step.id);
+            if (existingIndex >= 0) {
+              updatedSteps[existingIndex] = { ...updatedSteps[existingIndex], ...step };
+            } else {
+              updatedSteps.push(step);
+            }
+            return {
+              ...s,
+              steps: updatedSteps,
+              currentStepIndex: Math.max(s.currentStepIndex, updatedSteps.length - 1),
+            };
+          })
+        );
       });
-    }, stepDelay * 2);
 
-    // Step 2: Search finishes -> Step 3 Verifier starts
-    setTimeout(() => {
-      updateSessionStep(2, { status: 'completed', durationMs: 1800 });
-      updateSessionStep(3, {
-        status: 'running',
-        details: {
-          claimsVerified: 32,
-          hallucinationsDiscarded: 2,
-          confidenceScore: 98.6,
-          logs: [
-            'CLAIM CHECK: "Parity milestone estimated by 2028-2030" -> Verified across 3 peer sources',
-            'DISCARDED CLAIM: Unsubstantiated price projection removed from output',
-            'CONFIDENCE SCORE: 98.6% high convergence',
-          ],
-        },
+      eventSource.addEventListener('session_complete', (e) => {
+        const completedSession = JSON.parse(e.data);
+        setSessions((prevSessions) =>
+          prevSessions.map((s) => (s.id === session.id ? completedSession : s))
+        );
+        eventSource.close();
       });
-    }, stepDelay * 3);
 
-    // Step 3: Verifier finishes -> Step 4 Report finishes & populates output
-    setTimeout(() => {
-      updateSessionStep(3, { status: 'completed', durationMs: 1100 });
-
-      // Generated Mock Citations
-      const generatedCitations: SourceCitation[] = [
-        {
-          id: 1,
-          title: `Technical & Economic Assessment of ${prompt.slice(0, 40)}`,
-          url: 'https://arxiv.org/abs/2603.08912',
-          domain: 'arxiv.org',
-          snippet: 'Comprehensive benchmarking of primary technology metrics, manufacturing yields, and economic cost parity curves.',
-          credibilityScore: 99,
-          credibilityLabel: 'Highly Credible',
-          publishDate: '2026',
-          author: 'Global Technology Research Institute',
-        },
-        {
-          id: 2,
-          title: 'Global Industry Supply Chain & Cost Structure Benchmark Report Q2 2026',
-          url: 'https://bloombergNEF.com/insights/market-analysis-2026',
-          domain: 'bloombergNEF.com',
-          snippet: 'Precursor raw material processing bottlenecks hold back full giga-scale commercial deployment.',
-          credibilityScore: 98,
-          credibilityLabel: 'Highly Credible',
-          publishDate: 'May 2026',
-          author: 'Bloomberg New Energy Finance',
-        },
-        {
-          id: 3,
-          title: 'Peer-Reviewed Journal Validation & Field Performance Metrics',
-          url: 'https://nature.com/articles/s41586-2026-0912',
-          domain: 'nature.com',
-          snippet: 'Independent lab test protocols confirm 1,000+ cycle stability retention exceeding 85% initial capacity.',
-          credibilityScore: 97,
-          credibilityLabel: 'Highly Credible',
-          publishDate: 'Jun 2026',
-          author: 'Nature Technology Review',
-        },
-      ];
-
-      const generatedMarkdown = `
-# Autonomous Multi-Agent Research Report: ${prompt}
-
-## Executive Summary
-This report presents a synthesized, cross-verified analysis of **${prompt}** [1]. Utilizing parallel search agents across technical literature, financial filings, and preprint indexes, Nexus AI has audited key quantitative claims and manufacturing scaling trajectories [2].
-
----
-
-## 1. Technical Framework & Core Milestones
-* **Primary Performance Metrics:** Quantitative benchmarks demonstrate steady optimization curves with field retention exceeding **85% across 1,000 operational cycles** [3].
-* **Manufacturing Scaling:** Commercialization transitions from batch processing to continuous roll-to-roll production, reducing unit costs by **~42%** over a 36-month horizon [2].
-* **System Integration:** Safety protocols and thermal stability margins exhibit zero runaway up to **350°C** [1].
-
-> **Key Architectural Insight:** Cross-agent verification confirmed high convergence across 3 independent laboratory trials [1], eliminating earlier unsubstantiated yield projections.
-
----
-
-## 2. Supply Chain & Economic Outlook (2026–2030)
-1. **Precursor Raw Materials:** Supply chain bottlenecks center on specialized precursor refining capacity rather than mining extraction [2].
-2. **Capital Expenditure (CapEx) Parity:** Giga-scale facilities require initial capital investment of **~$1.2B per 10 GWh throughput**, with payback periods averaging 4.2 years [2].
-
----
-
-## 3. Strategic Conclusion
-Continued deployment depends on solving precursor yield consistency. Early commercial adopters will capture market share in high-margin premium segments prior to mass-market penetration [1], [3].
-`;
-
-      updateSessionStep(
-        4,
-        { status: 'completed', durationMs: 950 },
-        {
-          status: 'completed',
-          reportMarkdown: generatedMarkdown,
-          citations: generatedCitations,
-          keyTakeaways: [
-            `Nexus verified 32 quantitative facts across 24 primary sources for: "${prompt.slice(0, 45)}...".`,
-            'Manufacturing yields and precursor material processing represent the primary bottleneck to commercial scaling.',
-            'Cost parity curves project high-margin market adoption within 24-36 months.',
-          ],
-          metrics: {
-            totalTimeSeconds: Number((speedMultiplier * 5.2).toFixed(1)),
-            sourcesAnalyzed: 24,
-            factsVerified: 32,
-            overallCredibility: 98.6,
-          },
-          chartData: {
-            type: 'line',
-            title: 'Projected Commercial Adoption & Unit Cost Curve',
-            description: 'Unit Cost ($/unit) vs Adoption Index (2024-2030)',
-            xAxisKey: 'yearOrCategory',
-            linesOrBars: [
-              { key: 'cost', name: 'Unit Cost ($)', color: '#38BDF8' },
-              { key: 'adoption', name: 'Adoption Index (%)', color: '#34D399' },
-            ],
-            data: [
-              { yearOrCategory: '2024', cost: 320, adoption: 5 },
-              { yearOrCategory: '2025', cost: 240, adoption: 12 },
-              { yearOrCategory: '2026', cost: 180, adoption: 22 },
-              { yearOrCategory: '2027', cost: 135, adoption: 38 },
-              { yearOrCategory: '2028', cost: 105, adoption: 58 },
-              { yearOrCategory: '2029', cost: 88, adoption: 76 },
-              { yearOrCategory: '2030', cost: 75, adoption: 90 },
-            ],
-          },
-        }
-      );
-    }, stepDelay * 4);
+      eventSource.addEventListener('error', (e) => {
+        console.error("Pipeline error or connection closed", e);
+        // Do not close on typical SSE reconnects, only if we know it's a hard error
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSelectSession = (id: string) => {
@@ -384,7 +184,7 @@ Continued deployment depends on solving precursor yield consistency. Early comme
               <div className="w-full md:w-[32%] h-1/2 md:h-full flex-shrink-0 no-print">
                 <AgentTrace
                   session={activeSession}
-                  onReRunSimulation={() => runAgentSimulation(activeSession.id, activeSession.prompt)}
+                  onReRunSimulation={() => console.log('Re-run simulation not supported on live backend yet')}
                   onOpenRawTrace={() => setIsTraceModalOpen(true)}
                 />
               </div>
@@ -393,6 +193,7 @@ Continued deployment depends on solving precursor yield consistency. Early comme
               <div className="w-full md:w-[68%] h-1/2 md:h-full flex-1">
                 <ReportViewer
                   session={activeSession}
+                  allSessions={sessions}
                   onOpenSourcesModal={() => setIsSourcesOpen(true)}
                   onAskFollowUp={handleAskFollowUp}
                 />
