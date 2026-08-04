@@ -1,0 +1,6 @@
+{
+  "name": "Nexus AI",
+  "description": "Multi-Step AI Research Agent Dashboard with live agent traces, task decomposition, parallel search execution, and interactive cited reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

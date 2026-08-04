@@ -1,0 +1,296 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #050505;
+    color: #f3f4f6;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Geist', 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 15, 15, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* AI Glow and Pulse Effects */
+.ai-glow-card {
+  position: relative;
+}
+
+.ai-glow-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.5), rgba(6, 182, 212, 0.3), rgba(168, 85, 247, 0.4));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.ai-pulse-glow {
+  box-shadow: 0 0 25px -5px rgba(79, 70, 229, 0.35), 0 0 15px -5px rgba(6, 182, 212, 0.25);
+}
+
+/* Code & Monospace font helper */
+.font-mono-code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Markdown typography styles in dark mode */
+.markdown-body {
+  color: #d1d5db;
+  line-height: 1.7;
+  font-size: 0.975rem;
+}
+
+.markdown-body h1 {
+  color: #ffffff;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.5rem;
+}
+
+.markdown-body h2 {
+  color: #f3f4f6;
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+
+.markdown-body h3 {
+  color: #e5e7eb;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body p {
+  margin-bottom: 1rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.35rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.4rem;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #6366f1;
+  background-color: rgba(99, 102, 241, 0.08);
+  padding: 0.75rem 1rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin-bottom: 1rem;
+  color: #e0e7ff;
+}
+
+.markdown-body hr {
+  border-color: rgba(255, 255, 255, 0.08);
+  margin: 1.75rem 0;
+}
+
+.markdown-body pre {
+  background-color: #0f0f11;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  color: #a5b4fc;
+  margin-bottom: 1rem;
+}
+
+.markdown-body code {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  color: #a5b4fc;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+/* Print Stylesheet for Physical Documents & PDF Export */
+@media print {
+  /* Hide non-essential layout controls */
+  aside,
+  header,
+  .no-print,
+  .fixed,
+  button,
+  form {
+    display: none !important;
+  }
+
+  /* Reset document canvas for clean white-paper output */
+  html,
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+    font-size: 11pt !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  }
+
+  /* Remove dark theme containers and scrollbars */
+  #root,
+  .flex-1,
+  .overflow-y-auto,
+  .max-w-4xl {
+    overflow: visible !important;
+    max-width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Typography formatting for printed report */
+  .markdown-body {
+    color: #1e293b !important;
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+  }
+
+  .markdown-body h1 {
+    color: #0f172a !important;
+    font-size: 20pt !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    padding-bottom: 8px !important;
+    margin-top: 0 !important;
+    margin-bottom: 16px !important;
+    page-break-after: avoid;
+  }
+
+  .markdown-body h2 {
+    color: #0f172a !important;
+    font-size: 15pt !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    margin-top: 20pt !important;
+    margin-bottom: 10pt !important;
+    page-break-after: avoid;
+  }
+
+  .markdown-body h3 {
+    color: #334155 !important;
+    font-size: 12pt !important;
+    margin-top: 14pt !important;
+    margin-bottom: 6pt !important;
+    page-break-after: avoid;
+  }
+
+  .markdown-body p,
+  .markdown-body li {
+    color: #334155 !important;
+  }
+
+  .markdown-body blockquote {
+    background-color: #f8fafc !important;
+    border-left: 4px solid #4f46e5 !important;
+    color: #1e1b4b !important;
+    padding: 10px 14px !important;
+    margin: 14px 0 !important;
+    page-break-inside: avoid;
+  }
+
+  .markdown-body hr {
+    border-color: #cbd5e1 !important;
+    margin: 20px 0 !important;
+  }
+
+  /* Key Takeaways & Chart card print styles */
+  .p-5,
+  .p-4,
+  .p-3\.5 {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    page-break-inside: avoid;
+  }
+
+  .text-white,
+  .text-gray-100,
+  .text-gray-200,
+  .text-gray-300,
+  .text-gray-400 {
+    color: #1e293b !important;
+  }
+
+  .text-indigo-300,
+  .text-indigo-400 {
+    color: #4338ca !important;
+  }
+
+  .text-cyan-400 {
+    color: #0284c7 !important;
+  }
+
+  .text-emerald-400 {
+    color: #047857 !important;
+  }
+
+  /* Citation tag print styling */
+  button.inline-flex {
+    display: inline-block !important;
+    border: 1px solid #6366f1 !important;
+    background-color: #e0e7ff !important;
+    color: #3730a3 !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    font-weight: 700 !important;
+    font-size: 9pt !important;
+  }
+
+  /* Ensure SVG Charts fit cleanly on paper */
+  .recharts-wrapper {
+    page-break-inside: avoid;
+  }
+
+  @page {
+    margin: 2cm 1.5cm;
+    size: portrait;
+  }
+}
+
