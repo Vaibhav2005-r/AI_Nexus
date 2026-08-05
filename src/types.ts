@@ -100,3 +100,10 @@ export interface AppSettings {
   exportFormat: 'markdown' | 'pdf' | 'json';
   autoCopyMarkdown: boolean;
 }
+
+export interface GlobalStats {
+  total_sessions: number;
+  total_sources_analyzed: number;
+  total_facts_verified: number;
+  average_credibility: number;
+}

@@ -9,12 +9,43 @@ import { SourcesModal } from './components/SourcesModal';
 import { SettingsModal } from './components/SettingsModal';
 import { RawTraceModal } from './components/RawTraceModal';
 import { MOCK_SESSIONS, INITIAL_SETTINGS } from './data/mockResearchData';
-import { ResearchSession, AppSettings, AgentStep, SourceCitation } from './types';
+import { ResearchSession, AppSettings, AgentStep, SourceCitation, GlobalStats } from './types';
 
 export default function App() {
-  const [sessions, setSessions] = useState<ResearchSession[]>(MOCK_SESSIONS);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>('session-ssb-2030');
+  const [sessions, setSessions] = useState<ResearchSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/sessions?skip=0&limit=50');
+        if (res.ok) {
+          const data = await res.json();
+          setSessions(data.sessions);
+          if (data.sessions.length > 0 && !activeSessionId) {
+            setActiveSessionId(data.sessions[0].id);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load sessions:", e);
+      }
+    };
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/sessions/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setGlobalStats(data);
+        }
+      } catch (e) {
+        console.error("Failed to load stats:", e);
+      }
+    };
+    fetchSessions();
+    fetchStats();
+  }, []);
 
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -95,12 +126,32 @@ export default function App() {
     setActiveSessionId(null);
   };
 
-  const handleDeleteSession = (id: string, e: React.MouseEvent) => {
+  const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = sessions.filter((s) => s.id !== id);
-    setSessions(updated);
-    if (activeSessionId === id) {
-      setActiveSessionId(updated.length > 0 ? updated[0].id : null);
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/sessions/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        const updated = sessions.filter((s) => s.id !== id);
+        setSessions(updated);
+        if (activeSessionId === id) {
+          setActiveSessionId(updated.length > 0 ? updated[0].id : null);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete session", err);
+    }
+  };
+
+  const handleClearAllSessions = async () => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/sessions`, { method: 'DELETE' });
+      if (res.ok) {
+        setSessions([]);
+        setActiveSessionId(null);
+        setGlobalStats(null);
+      }
+    } catch (err) {
+      console.error("Failed to clear sessions", err);
     }
   };
 
@@ -133,6 +184,7 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        globalStats={globalStats}
       />
 
       {/* Main Workspace Area */}
@@ -215,6 +267,7 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onSaveSettings={(newSettings) => setSettings(newSettings)}
+        onClearAllSessions={handleClearAllSessions}
       />
 
       <RawTraceModal

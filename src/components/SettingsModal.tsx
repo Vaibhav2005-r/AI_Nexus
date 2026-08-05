@@ -8,6 +8,7 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AppSettings;
   onSaveSettings: (newSettings: AppSettings) => void;
+  onClearAllSessions?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -15,6 +16,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   settings,
   onSaveSettings,
+  onClearAllSessions,
 }) => {
   const [formData, setFormData] = React.useState<AppSettings>(settings);
   const [saved, setSaved] = React.useState(false);
@@ -171,6 +173,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {/* Advanced Actions */}
+              <div className="space-y-3 pt-3 border-t border-white/10">
+                <h4 className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  Danger Zone
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onClearAllSessions) {
+                      onClearAllSessions();
+                      onClose();
+                    }
+                  }}
+                  className="w-full py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                >
+                  Clear All Research Sessions
+                </button>
               </div>
 
               {/* Footer Submit */}

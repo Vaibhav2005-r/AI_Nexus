@@ -18,7 +18,7 @@ import {
   FolderTree,
   Tag,
 } from 'lucide-react';
-import { ResearchSession } from '../types';
+import { ResearchSession, GlobalStats } from '../types';
 
 interface TopicCategoryDef {
   id: string;
@@ -91,6 +91,7 @@ interface SidebarProps {
   onOpenSettings: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  globalStats?: GlobalStats | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -102,6 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   isCollapsed,
   onToggleCollapse,
+  globalStats,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'time' | 'clusters'>('time');
@@ -366,13 +368,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 m-2 rounded-lg bg-[#111115] border border-white/10 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-mono">
             <span className="text-gray-400 flex items-center gap-1.5">
-              <Activity className="w-3 h-3 text-emerald-400" /> Cluster
+              <Activity className="w-3 h-3 text-emerald-400" /> Stats
             </span>
-            <span className="text-emerald-400 font-semibold">ONLINE</span>
+            <span className="text-emerald-400 font-semibold">LIVE</span>
           </div>
           <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-gray-400 pt-1 border-t border-white/5">
-            <div>Engine: <span className="text-gray-200">v2.6 Swarm</span></div>
-            <div>Latency: <span className="text-gray-200">~84ms</span></div>
+            <div>Sessions: <span className="text-gray-200">{globalStats?.total_sessions || 0}</span></div>
+            <div>Sources: <span className="text-gray-200">{globalStats?.total_sources_analyzed || 0}</span></div>
+            <div>Facts: <span className="text-gray-200">{globalStats?.total_facts_verified || 0}</span></div>
+            <div>Credibility: <span className="text-gray-200">{globalStats?.average_credibility || 0}/100</span></div>
           </div>
         </div>
       )}
