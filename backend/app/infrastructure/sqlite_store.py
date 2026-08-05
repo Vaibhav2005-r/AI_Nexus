@@ -62,5 +62,38 @@ class SQLiteSessionStore(SessionRepository):
                 return True
         return False
 
+    async def clear_all_sessions(self) -> int:
+        await self._init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("DELETE FROM sessions")
+            await db.commit()
+            count = cursor.rowcount
+            logger.info("All sessions cleared from SQLite", deleted_count=count)
+            return count
+
+    async def get_global_stats(self) -> dict:
+        sessions = await self.list_sessions()
+        total_sessions = len(sessions)
+        total_sources_analyzed = 0
+        total_facts_verified = 0
+        total_credibility = 0.0
+        sessions_with_metrics = 0
+        
+        for session in sessions:
+            if session.metrics:
+                total_sources_analyzed += session.metrics.sources_analyzed
+                total_facts_verified += session.metrics.facts_verified
+                total_credibility += session.metrics.overall_credibility
+                sessions_with_metrics += 1
+                
+        average_credibility = (total_credibility / sessions_with_metrics) if sessions_with_metrics > 0 else 0.0
+        
+        return {
+            "total_sessions": total_sessions,
+            "total_sources_analyzed": total_sources_analyzed,
+            "total_facts_verified": total_facts_verified,
+            "average_credibility": round(average_credibility, 2)
+        }
+
 # Global instance for DI
 session_store = SQLiteSessionStore()

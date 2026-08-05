@@ -15,3 +15,9 @@ class FollowUpRequest(BaseModel):
 class SessionListResponse(BaseModel):
     sessions: List[ResearchSession]
     total: int
+
+class GlobalStatsResponse(BaseModel):
+    total_sessions: int
+    total_sources_analyzed: int
+    total_facts_verified: int
+    average_credibility: float

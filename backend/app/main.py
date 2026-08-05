@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.utils.logger import setup_logger, get_logger
@@ -28,6 +29,14 @@ if settings.CORS_ORIGINS:
 @app.on_event("startup")
 async def startup_event():
     logger.info("Application starting up", env=settings.ENV)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception occurred", exc_info=exc, path=request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred.", "path": request.url.path},
+    )
 
 from app.api.router import api_router
 app.include_router(api_router, prefix=settings.API_V1_STR)
