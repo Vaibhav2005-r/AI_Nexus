@@ -257,6 +257,7 @@ class ResearchService:
                 
                 session.key_takeaways = full_state.get("key_takeaways")
                 session.contradictions = full_state.get("contradictions")
+                session.chart_data = full_state.get("chart_data")
                 
                 # Convert steps
                 from app.domain.models import AgentStep, AgentStepType, StepStatus
@@ -265,6 +266,7 @@ class ResearchService:
                     # map step status
                     s_status = StepStatus.COMPLETED
                     if s.get("status") == "pending": s_status = StepStatus.PENDING
+                    elif s.get("status") == "running": s_status = StepStatus.RUNNING
                     elif s.get("status") == "failed": s_status = StepStatus.FAILED
                     
                     s_type = AgentStepType.PLANNER
