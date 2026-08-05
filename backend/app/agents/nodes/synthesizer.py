@@ -72,10 +72,18 @@ async def synthesizer_node(state: ResearchState) -> dict:
     
     result = await client.generate_structured(prompt, schema)
     
+    if not result:
+        logger.error("Synthesizer received empty response from LLM")
+        raise ValueError("AI failed to synthesize the final report. Please try again.")
+        
     report_markdown = result.get("report_markdown", "")
     citations = result.get("citations", [])
     key_takeaways = result.get("key_takeaways", [])
     chart_data = result.get("chart_data", None)
+    
+    if not report_markdown:
+        logger.error("Synthesizer received invalid response format from LLM")
+        raise ValueError("AI generated an invalid report format.")
     
     # Push to Qdrant Memory
     session_id = state.get("session_id", "unknown")

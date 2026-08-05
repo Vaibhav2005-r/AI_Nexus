@@ -39,7 +39,8 @@ class GeminiClient:
             logger.warning("Gemini API key not set, returning mock empty dict")
             return {}
             
-        for attempt in range(3):
+        max_retries = 4
+        for attempt in range(max_retries):
             try:
                 config_params = {
                     "temperature": 0.2,
@@ -56,12 +57,17 @@ class GeminiClient:
                 
                 return json.loads(response.text)
             except Exception as e:
-                if "429" in str(e) and attempt < 2:
-                    logger.warning("Gemini API Rate Limit (429) hit, waiting 15 seconds before retry...")
+                error_msg = str(e).lower()
+                is_transient = any(code in error_msg for code in ["429", "500", "502", "503", "timeout", "connection reset"])
+                
+                if is_transient and attempt < max_retries - 1:
+                    wait_time = 2 ** attempt * 5  # 5s, 10s, 20s
+                    logger.warning(f"Gemini API transient error ({error_msg}). Retrying in {wait_time}s (Attempt {attempt+1}/{max_retries})...")
                     import asyncio
-                    await asyncio.sleep(15)
+                    await asyncio.sleep(wait_time)
                     continue
-                logger.error("Gemini structured generation failed", error=str(e))
+                    
+                logger.error("Gemini structured generation failed after retries", error=str(e))
                 return {}
 
     async def generate_text(self, prompt: str) -> str:
@@ -82,16 +88,28 @@ class GeminiClient:
             logger.warning("Gemini API key not set")
             return ""
             
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.3)
-            )
-            return response.text
-        except Exception as e:
-            logger.error("Gemini text generation failed", error=str(e))
-            return ""
+        max_retries = 4
+        for attempt in range(max_retries):
+            try:
+                response = await self.client.aio.models.generate_content(
+                    model=self.model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(temperature=0.3)
+                )
+                return response.text
+            except Exception as e:
+                error_msg = str(e).lower()
+                is_transient = any(code in error_msg for code in ["429", "500", "502", "503", "timeout", "connection reset"])
+                
+                if is_transient and attempt < max_retries - 1:
+                    wait_time = 2 ** attempt * 5
+                    logger.warning(f"Gemini API text transient error ({error_msg}). Retrying in {wait_time}s (Attempt {attempt+1}/{max_retries})...")
+                    import asyncio
+                    await asyncio.sleep(wait_time)
+                    continue
+                    
+                logger.error("Gemini text generation failed after retries", error=str(e))
+                return ""
 
     def _get_mock_response(self, schema: dict, prompt: str = "") -> dict:
         import re

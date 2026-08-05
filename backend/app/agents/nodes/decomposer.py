@@ -39,7 +39,17 @@ async def decomposer_node(state: ResearchState) -> dict:
     
     result = await client.generate_structured(prompt, schema)
     
-    raw_sub_queries = result.get("sub_queries", [])
+    if not result:
+        logger.error("Decomposer received empty response from LLM")
+        raise ValueError("AI failed to decompose the strategy. Please try again.")
+        
+    sub_queries = result.get("sub_queries", [])
+    
+    if not sub_queries:
+        logger.error("Decomposer received invalid response format from LLM")
+        raise ValueError("AI generated an invalid sub-query format.")
+    
+    raw_sub_queries = sub_queries
     sub_queries = []
     
     for sq in raw_sub_queries:
@@ -66,7 +76,7 @@ async def decomposer_node(state: ResearchState) -> dict:
         "details": None
     }
     
-    logger.info("Decomposer finished", sub_queries_count=len(sub_queries))
+    logger.info("Decomposer finished", prompt_size=len(prompt), sub_queries_count=len(sub_queries))
     
     return {
         "sub_queries": sub_queries,

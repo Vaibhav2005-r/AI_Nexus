@@ -39,8 +39,16 @@ async def planner_node(state: ResearchState) -> dict:
     
     result = await client.generate_structured(prompt, schema)
     
+    if not result:
+        logger.error("Planner received empty response from LLM")
+        raise ValueError("AI failed to generate a research strategy. Please try again.")
+        
     strategy = result.get("strategy", [])
     domain_constraints = result.get("domain_constraints", [])
+    
+    if not strategy:
+        logger.error("Planner received invalid response format from LLM")
+        raise ValueError("AI generated an invalid research strategy format.")
     
     duration_ms = int((time.time() - start_time) * 1000)
     
@@ -59,7 +67,7 @@ async def planner_node(state: ResearchState) -> dict:
         }
     }
     
-    logger.info("Planner finished", strategy_count=len(strategy), constraints_count=len(domain_constraints))
+    logger.info("Planner finished", prompt_size=len(prompt), strategy_count=len(strategy), constraints_count=len(domain_constraints))
     
     return {
         "strategy": strategy,

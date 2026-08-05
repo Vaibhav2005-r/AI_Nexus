@@ -23,7 +23,7 @@ class TavilyClient(SearchProvider):
                 "query": query,
                 "search_depth": "advanced",
                 "max_results": max_results,
-                "include_raw_content": False
+                "include_raw_content": True
             }
             try:
                 response = await client.post(self.base_url, json=payload, timeout=30.0)
@@ -32,13 +32,18 @@ class TavilyClient(SearchProvider):
                 
                 results = []
                 for item in data.get("results", []):
+                    raw_content = item.get("raw_content", "")
+                    if raw_content:
+                        # Truncate raw content to roughly 2000 chars to protect token budget
+                        raw_content = raw_content[:2000] + ("..." if len(raw_content) > 2000 else "")
+                    
                     results.append({
                         "source_agent": "web_search",
                         "title": item.get("title", ""),
                         "url": item.get("url", ""),
                         "domain": item.get("url", "").split("/")[2] if item.get("url") else "unknown",
                         "snippet": item.get("content", ""),
-                        "raw_content": item.get("raw_content", None),
+                        "raw_content": raw_content or None,
                         "publish_date": None,
                         "author": None,
                         "relevance_score": item.get("score", 0.0),

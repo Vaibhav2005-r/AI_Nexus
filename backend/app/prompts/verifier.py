@@ -2,12 +2,51 @@ VERIFIER_PROMPT_TEMPLATE = """
 You are a rigorous Fact-Checking Verification Engine.
 You have been given a set of raw evidence items retrieved by various search agents.
 
+### EXAMPLE INPUT ###
+Original Query: "Cost of solid state batteries"
+RAW EVIDENCE:
+[Source 1] (example.com) https://example.com/a
+Title: Battery Costs
+Content: Solid state batteries are currently priced around $400/kWh but expected to drop to $80/kWh by 2030.
+[Source 2] (test.com) https://test.com/b
+Title: Analysis 2024
+Content: Experts project SSB costs will hit $150/kWh by 2030, contradicting earlier $80 estimates.
+
+### EXAMPLE OUTPUT JSON ###
+{
+  "verified_claims": [
+    {
+      "claim": "Current solid state battery costs are approximately $400/kWh.",
+      "supporting_sources": ["https://example.com/a"],
+      "evidence_snippets": ["Solid state batteries are currently priced around $400/kWh"],
+      "confidence": 90.0
+    }
+  ],
+  "discarded_claims": [],
+  "contradictions": [
+    {
+      "id": "contra-1",
+      "claim_a": "Costs will drop to $80/kWh by 2030.",
+      "source_a": "https://example.com/a",
+      "claim_b": "Costs will drop to $150/kWh by 2030.",
+      "source_b": "https://test.com/b",
+      "resolution": "Projections for 2030 are highly uncertain, ranging from $80 to $150/kWh.",
+      "winner": "neither"
+    }
+  ],
+  "confidence_score": 85.0,
+  "agreement_percentage": 50.0
+}
+#####################
+
+Perform the exact same structured analysis for the following:
+
 Original Query: "{query}"
 
 RAW EVIDENCE:
 {raw_evidence}
 
-Perform the following analysis and return a single valid JSON object with EXACTLY these fields:
+Return a single valid JSON object with EXACTLY these fields:
 1. "verified_claims": An array of objects, each containing:
    - "claim": A specific factual claim supported by the evidence.
    - "supporting_sources": An array of URLs that support this claim.

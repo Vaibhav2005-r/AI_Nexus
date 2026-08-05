@@ -17,7 +17,12 @@ async def verifier_node(state: ResearchState) -> dict:
     # Limit evidence to fit in context window if necessary, but 2.5 flash has huge window
     evidence_text = ""
     for idx, ev in enumerate(raw_evidence):
-        evidence_text += f"\n[Source {idx+1}] ({ev['domain']}) {ev['url']}\nTitle: {ev['title']}\nSnippet: {ev['snippet']}\n"
+        content_to_show = ev.get('raw_content') or ev.get('snippet', '')
+        # Extra safety truncation to protect budget
+        if len(content_to_show) > 2500:
+            content_to_show = content_to_show[:2500] + "..."
+            
+        evidence_text += f"\n[Source {idx+1}] ({ev['domain']}) {ev['url']}\nTitle: {ev['title']}\nContent: {content_to_show}\n"
     
     if not evidence_text:
         evidence_text = "No evidence found."
@@ -78,11 +83,19 @@ async def verifier_node(state: ResearchState) -> dict:
     
     result = await client.generate_structured(prompt, schema)
     
+    if not result:
+        logger.error("Verifier received empty response from LLM")
+        raise ValueError("AI failed to verify the research evidence. Please try again.")
+        
     verified_claims = result.get("verified_claims", [])
     discarded_claims = result.get("discarded_claims", [])
     contradictions = result.get("contradictions", [])
     confidence_score = result.get("confidence_score", 0.0)
     agreement_percentage = result.get("agreement_percentage", 100.0)
+    
+    if not verified_claims and not discarded_claims and not contradictions:
+        logger.error("Verifier received invalid response format from LLM")
+        raise ValueError("AI generated an invalid verification format.")
     
     duration_ms = int((time.time() - start_time) * 1000)
     
@@ -124,7 +137,7 @@ async def verifier_node(state: ResearchState) -> dict:
         }
     }
     
-    logger.info("Verifier finished", raw_evidence_in=len(raw_evidence), verified_claims_out=len(verified_claims))
+    logger.info("Verifier finished", raw_evidence_in=len(raw_evidence), verified_claims_out=len(verified_claims), contradictions_out=len(contradictions))
     
     return {
         "verified_claims": verified_claims,

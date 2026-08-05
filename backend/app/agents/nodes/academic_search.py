@@ -29,7 +29,7 @@ async def academic_search_node(state: ResearchState) -> dict:
         elif isinstance(res, Exception):
             errors.append(str(res))
             
-    logger.info("Academic Search finished", academic_queries=len(sub_queries), academic_evidence_count=len(all_evidence))
+    logger.info("Academic Search finished", academic_evidence_count=len(all_evidence), academic_queries=len(sub_queries), academic_sources=len(set(e.get("url") for e in all_evidence)))
     
     output = {"raw_evidence": all_evidence}
     
