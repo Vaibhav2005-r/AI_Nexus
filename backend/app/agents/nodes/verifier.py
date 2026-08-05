@@ -22,7 +22,10 @@ async def verifier_node(state: ResearchState) -> dict:
     if not evidence_text:
         evidence_text = "No evidence found."
         
-    prompt = VERIFIER_PROMPT_TEMPLATE.format(raw_evidence=evidence_text)
+    prompt = VERIFIER_PROMPT_TEMPLATE.format(
+        query=state["query"],
+        raw_evidence=evidence_text
+    )
     
     client = GeminiClient()
     schema = {

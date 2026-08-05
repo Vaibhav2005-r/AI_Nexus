@@ -1,6 +1,7 @@
 from typing import List, Dict, Any
 from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct
+from qdrant_client.models import PointStruct, VectorParams, Distance
+from fastembed import TextEmbedding
 from app.utils.logger import get_logger
 import uuid
 
@@ -11,12 +12,15 @@ class QdrantMemoryManager:
         self.collection_name = "research_memory"
         # Using local persistent storage
         self.client = QdrantClient(path=db_path)
+        self.embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         
         # Initialize collection if not exists
         if not self.client.collection_exists(self.collection_name):
-            # We don't need to manually create collection if using the fastembed .add() and .query() API,
-            # QdrantClient will handle it automatically, but we can configure it if needed.
-            logger.info("Qdrant collection will be auto-created on first insert.")
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+            )
+            logger.info("Qdrant collection created.")
 
     def store_research_memory(self, session_id: str, query: str, chunks: List[str]):
         """
@@ -33,11 +37,22 @@ class QdrantMemoryManager:
                 documents.append(f"Query: {query}\nFinding: {chunk}")
                 metadata.append({"session_id": session_id, "query": query})
                 
-            # .add() automatically uses fastembed with all-MiniLM-L6-v2
-            self.client.add(
+            vectors = list(self.embedding_model.embed(documents))
+            
+            points = []
+            for vector, meta, doc in zip(vectors, metadata, documents):
+                meta["document"] = doc
+                points.append(
+                    PointStruct(
+                        id=uuid.uuid4().hex, 
+                        vector=vector.tolist() if hasattr(vector, "tolist") else vector, 
+                        payload=meta
+                    )
+                )
+                
+            self.client.upsert(
                 collection_name=self.collection_name,
-                documents=documents,
-                metadata=metadata
+                points=points
             )
             logger.info("Stored research memory in Qdrant", session_id=session_id, chunks=len(chunks))
         except Exception as e:
@@ -51,21 +66,22 @@ class QdrantMemoryManager:
             if not self.client.collection_exists(self.collection_name):
                 return []
                 
-            results = self.client.query(
+            query_vector = list(self.embedding_model.embed([current_query]))[0]
+            
+            results = self.client.query_points(
                 collection_name=self.collection_name,
-                query_text=current_query,
+                query=query_vector.tolist() if hasattr(query_vector, "tolist") else query_vector,
                 limit=limit
-            )
+            ).points
             
             # format results
             past_findings = []
             for hit in results:
-                # hit is a QueryResponse, usually hit.document has the text
                 if hit.score > 0.6: # Relevance threshold
                     past_findings.append({
-                        "text": hit.document,
+                        "text": hit.payload.get("document", ""),
                         "score": hit.score,
-                        "session_id": hit.metadata.get("session_id") if hit.metadata else None
+                        "session_id": hit.payload.get("session_id")
                     })
                     
             return past_findings

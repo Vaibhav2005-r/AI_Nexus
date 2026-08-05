@@ -2,6 +2,8 @@ VERIFIER_PROMPT_TEMPLATE = """
 You are a rigorous Fact-Checking Verification Engine.
 You have been given a set of raw evidence items retrieved by various search agents.
 
+Original Query: "{query}"
+
 RAW EVIDENCE:
 {raw_evidence}
 

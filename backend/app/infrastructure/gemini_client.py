@@ -24,7 +24,7 @@ class GeminiClient:
         if not is_mock and os.path.exists(".env"):
             with open(".env", "r") as f:
                 content = f.read()
-                if "USE_MOCK_LLM=true" in content.lower():
+                if "use_mock_llm=true" in content.lower():
                     is_mock = True
 
         logger.info(f"Checking mock mode in generate_structured: {is_mock}")
@@ -48,7 +48,7 @@ class GeminiClient:
                 if schema:
                     config_params["response_schema"] = schema
     
-                response = self.client.models.generate_content(
+                response = await self.client.aio.models.generate_content(
                     model=self.model,
                     contents=prompt,
                     config=types.GenerateContentConfig(**config_params)
@@ -71,7 +71,7 @@ class GeminiClient:
         # Fallback: check .env file directly
         if not is_mock and os.path.exists(".env"):
             with open(".env", "r") as f:
-                if "USE_MOCK_LLM=true" in f.read().lower():
+                if "use_mock_llm=true" in f.read().lower():
                     is_mock = True
                     
         if is_mock:
@@ -83,7 +83,7 @@ class GeminiClient:
             return ""
             
         try:
-            response = self.client.models.generate_content(
+            response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=prompt,
                 config=types.GenerateContentConfig(temperature=0.3)
@@ -96,7 +96,7 @@ class GeminiClient:
     def _get_mock_response(self, schema: dict, prompt: str = "") -> dict:
         import re
         topic = "Solid State Batteries"
-        match = re.search(r'Query:\s*"(.*?)"', prompt)
+        match = re.search(r'(?i)query:\s*"(.*?)"', prompt)
         if match:
             topic = match.group(1).title()
             
@@ -143,8 +143,13 @@ class GeminiClient:
                 "agreement_percentage": 100.0
             }
         elif "report_markdown" in props:
+            report_text = f"# {topic} Research Report\n\n{topic} represents a significant leap forward in this domain. By utilizing new methodologies, it dramatically reduces risks and improves efficiency [1].\n\n## Key Advancements\nRecent studies indicate a theoretical improvement of up to 50% compared to conventional approaches [2]."
+            
+            if "=== PAST RESEARCH ON THIS TOPIC ===" in prompt:
+                report_text += f"\n\n## New Developments & Delta Analysis\n### New Papers\nSeveral new papers on {topic} have been published since the last research session.\n### Emerging Trends\nThere is a massive influx of capital towards {topic} commercialization."
+                
             return {
-                "report_markdown": f"# {topic} Research Report\n\n{topic} represents a significant leap forward in this domain. By utilizing new methodologies, it dramatically reduces risks and improves efficiency [1].\n\n## Key Advancements\nRecent studies indicate a theoretical improvement of up to 50% compared to conventional approaches [2].\n\n## New Developments & Delta Analysis\n### New Papers\nSeveral new papers on {topic} have been published since the last research session.\n### Emerging Trends\nThere is a massive influx of capital towards {topic} commercialization.",
+                "report_markdown": report_text,
                 "citations": [
                     {
                         "id": 1,

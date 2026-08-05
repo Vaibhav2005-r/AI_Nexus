@@ -153,7 +153,8 @@ class ResearchService:
                 "chart_data": None,
                 "agent_steps": [],
                 "current_step_index": 0,
-                "errors": []
+                "errors": [],
+                "metrics": {}
         }
         
         try:
