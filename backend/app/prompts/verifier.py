@@ -13,18 +13,18 @@ Title: Analysis 2024
 Content: Experts project SSB costs will hit $150/kWh by 2030, contradicting earlier $80 estimates.
 
 ### EXAMPLE OUTPUT JSON ###
-{
+{{
   "verified_claims": [
-    {
+    {{
       "claim": "Current solid state battery costs are approximately $400/kWh.",
       "supporting_sources": ["https://example.com/a"],
       "evidence_snippets": ["Solid state batteries are currently priced around $400/kWh"],
       "confidence": 90.0
-    }
+    }}
   ],
   "discarded_claims": [],
   "contradictions": [
-    {
+    {{
       "id": "contra-1",
       "claim_a": "Costs will drop to $80/kWh by 2030.",
       "source_a": "https://example.com/a",
@@ -32,11 +32,11 @@ Content: Experts project SSB costs will hit $150/kWh by 2030, contradicting earl
       "source_b": "https://test.com/b",
       "resolution": "Projections for 2030 are highly uncertain, ranging from $80 to $150/kWh.",
       "winner": "neither"
-    }
+    }}
   ],
   "confidence_score": 85.0,
   "agreement_percentage": 50.0
-}
+}}
 #####################
 
 Perform the exact same structured analysis for the following:
