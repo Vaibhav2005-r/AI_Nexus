@@ -4,7 +4,8 @@ from datetime import datetime
 import json
 from app.agents.state import ResearchState, AgentStepState
 from app.prompts.synthesizer import SYNTHESIZER_PROMPT_TEMPLATE
-from app.infrastructure.gemini_client import GeminiClient
+from app.infrastructure.llm.factory import LLMFactory
+from app.domain.llm_models import SynthesizerResponse
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -31,55 +32,17 @@ async def synthesizer_node(state: ResearchState) -> dict:
         past_research_context=past_research_context
     )
     
-    client = GeminiClient()
-    schema = {
-        "type": "OBJECT",
-        "properties": {
-            "report_markdown": {"type": "STRING"},
-            "citations": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "id": {"type": "INTEGER"},
-                        "title": {"type": "STRING"},
-                        "url": {"type": "STRING"},
-                        "domain": {"type": "STRING"},
-                        "snippet": {"type": "STRING"},
-                        "credibility_score": {"type": "NUMBER"},
-                        "credibility_label": {"type": "STRING"},
-                        "publish_date": {"type": "STRING"},
-                        "author": {"type": "STRING"}
-                    },
-                    "required": ["id", "title", "url", "domain", "snippet", "credibility_score", "credibility_label"]
-                }
-            },
-            "key_takeaways": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "chart_data": {
-                "type": "OBJECT",
-                "properties": {
-                    "type": {"type": "STRING"},
-                    "title": {"type": "STRING"},
-                    "description": {"type": "STRING"},
-                    "xAxisKey": {"type": "STRING"},
-                    "linesOrBars": {"type": "ARRAY", "items": {"type": "OBJECT"}},
-                    "data": {"type": "ARRAY", "items": {"type": "OBJECT"}}
-                }
-            }
-        },
-        "required": ["report_markdown", "citations", "key_takeaways"]
-    }
-    
-    result = await client.generate_structured(prompt, schema)
+    client = LLMFactory.get_client()
+    result = await client.generate_structured(prompt, SynthesizerResponse)
     
     if not result:
         logger.error("Synthesizer received empty response from LLM")
         raise ValueError("AI failed to synthesize the final report. Please try again.")
         
-    report_markdown = result.get("report_markdown", "")
-    citations = result.get("citations", [])
-    key_takeaways = result.get("key_takeaways", [])
-    chart_data = result.get("chart_data", None)
+    report_markdown = result.report_markdown
+    citations = [c.model_dump() for c in result.citations] if result.citations else []
+    key_takeaways = result.key_takeaways
+    chart_data = result.chart_data.model_dump() if result.chart_data else None
     
     if not report_markdown:
         logger.error("Synthesizer received invalid response format from LLM")

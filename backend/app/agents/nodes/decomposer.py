@@ -3,7 +3,8 @@ from datetime import datetime
 import uuid
 from app.agents.state import ResearchState, AgentStepState, SubQueryState
 from app.prompts.decomposer import DECOMPOSER_PROMPT_TEMPLATE
-from app.infrastructure.gemini_client import GeminiClient
+from app.infrastructure.llm.factory import LLMFactory
+from app.domain.llm_models import DecomposerResponse
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,45 +19,26 @@ async def decomposer_node(state: ResearchState) -> dict:
         strategy=strategy_text
     )
     
-    client = GeminiClient()
-    schema = {
-        "type": "OBJECT",
-        "properties": {
-            "sub_queries": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "query": {"type": "STRING"},
-                        "target_agent": {"type": "STRING"}
-                    },
-                    "required": ["query", "target_agent"]
-                }
-            }
-        },
-        "required": ["sub_queries"]
-    }
-    
-    result = await client.generate_structured(prompt, schema)
+    client = LLMFactory.get_client()
+    result = await client.generate_structured(prompt, DecomposerResponse)
     
     if not result:
         logger.error("Decomposer received empty response from LLM")
         raise ValueError("AI failed to decompose the strategy. Please try again.")
         
-    sub_queries = result.get("sub_queries", [])
+    sub_queries_data = result.sub_queries
     
-    if not sub_queries:
+    if not sub_queries_data:
         logger.error("Decomposer received invalid response format from LLM")
         raise ValueError("AI generated an invalid sub-query format.")
     
-    raw_sub_queries = sub_queries
     sub_queries = []
     
-    for sq in raw_sub_queries:
+    for sq in sub_queries_data:
         sub_queries.append({
             "id": f"sq-{uuid.uuid4().hex[:6]}",
-            "query": sq.get("query", ""),
-            "target_agent": sq.get("target_agent", "web"),
+            "query": sq.query,
+            "target_agent": sq.target_agent,
             "status": "pending",
             "results_count": 0,
             "sources_found": []

@@ -3,10 +3,13 @@ import uuid
 from datetime import datetime
 from app.agents.state import ResearchState, AgentStepState
 from app.prompts.verifier import VERIFIER_PROMPT_TEMPLATE
-from app.infrastructure.gemini_client import GeminiClient
+from app.infrastructure.llm.factory import LLMFactory
+from app.domain.llm_models import VerifierResponse
 from app.utils.logger import get_logger
+from app.config import get_settings
 
 logger = get_logger(__name__)
+settings = get_settings()
 
 async def verifier_node(state: ResearchState) -> dict:
     logger.info("Verifier started")
@@ -14,15 +17,37 @@ async def verifier_node(state: ResearchState) -> dict:
     
     raw_evidence = state.get("raw_evidence", [])
     
-    # Limit evidence to fit in context window if necessary, but 2.5 flash has huge window
-    evidence_text = ""
-    for idx, ev in enumerate(raw_evidence):
-        content_to_show = ev.get('raw_content') or ev.get('snippet', '')
-        # Extra safety truncation to protect budget
-        if len(content_to_show) > 2500:
-            content_to_show = content_to_show[:2500] + "..."
+    # Deduplicate based on URL
+    unique_evidence = {}
+    for ev in raw_evidence:
+        url = ev.get('url', '')
+        if url and url not in unique_evidence:
+            unique_evidence[url] = ev
             
-        evidence_text += f"\n[Source {idx+1}] ({ev['domain']}) {ev['url']}\nTitle: {ev['title']}\nContent: {content_to_show}\n"
+    deduped_evidence = list(unique_evidence.values())
+    
+    # Sort by credibility score if available (descending), fallback to keeping original order
+    deduped_evidence.sort(key=lambda x: x.get('credibility_score', 0), reverse=True)
+    
+    # Cap to max sources
+    top_evidence = deduped_evidence[:settings.VERIFIER_MAX_SOURCES]
+    
+    evidence_text = ""
+    for idx, ev in enumerate(top_evidence):
+        title = ev.get('title', '')
+        snippet = ev.get('snippet', '')
+        raw_content = ev.get('raw_content', '')
+        
+        # Smart Truncation: Prefer title + snippet + safe chunk of raw_content
+        char_limit = settings.VERIFIER_SOURCE_CHAR_LIMIT
+        
+        content_to_show = f"Title: {title}\nSummary: {snippet}\n"
+        remaining_chars = char_limit - len(content_to_show)
+        
+        if remaining_chars > 0 and raw_content:
+            content_to_show += f"Excerpt: {raw_content[:remaining_chars]}..."
+            
+        evidence_text += f"\n[Source {idx+1}] ({ev.get('domain', 'unknown')}) {ev.get('url', '')}\n{content_to_show}\n"
     
     if not evidence_text:
         evidence_text = "No evidence found."
@@ -32,66 +57,18 @@ async def verifier_node(state: ResearchState) -> dict:
         raw_evidence=evidence_text
     )
     
-    client = GeminiClient()
-    schema = {
-        "type": "OBJECT",
-        "properties": {
-            "verified_claims": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "claim": {"type": "STRING"},
-                        "supporting_sources": {"type": "ARRAY", "items": {"type": "STRING"}},
-                        "evidence_snippets": {"type": "ARRAY", "items": {"type": "STRING"}},
-                        "confidence": {"type": "NUMBER"}
-                    },
-                    "required": ["claim", "supporting_sources", "confidence"]
-                }
-            },
-            "discarded_claims": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "claim": {"type": "STRING"},
-                        "reason": {"type": "STRING"},
-                        "original_source": {"type": "STRING"}
-                    }
-                }
-            },
-            "contradictions": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "id": {"type": "STRING"},
-                        "claim_a": {"type": "STRING"},
-                        "source_a": {"type": "STRING"},
-                        "claim_b": {"type": "STRING"},
-                        "source_b": {"type": "STRING"},
-                        "resolution": {"type": "STRING"},
-                        "winner": {"type": "STRING"}
-                    }
-                }
-            },
-            "confidence_score": {"type": "NUMBER"},
-            "agreement_percentage": {"type": "NUMBER"}
-        },
-        "required": ["verified_claims", "confidence_score", "agreement_percentage"]
-    }
-    
-    result = await client.generate_structured(prompt, schema)
+    client = LLMFactory.get_client()
+    result = await client.generate_structured(prompt, VerifierResponse, timeout_seconds=180)
     
     if not result:
         logger.error("Verifier received empty response from LLM")
         raise ValueError("AI failed to verify the research evidence. Please try again.")
         
-    verified_claims = result.get("verified_claims", [])
-    discarded_claims = result.get("discarded_claims", [])
-    contradictions = result.get("contradictions", [])
-    confidence_score = result.get("confidence_score", 0.0)
-    agreement_percentage = result.get("agreement_percentage", 100.0)
+    verified_claims = [c.model_dump() for c in result.verified_claims] if result.verified_claims else []
+    discarded_claims = [c.model_dump() for c in result.discarded_claims] if result.discarded_claims else []
+    contradictions = [c.model_dump() for c in result.contradictions] if result.contradictions else []
+    confidence_score = result.confidence_score
+    agreement_percentage = result.agreement_percentage
     
     if not verified_claims and not discarded_claims and not contradictions:
         logger.error("Verifier received invalid response format from LLM")

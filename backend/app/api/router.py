@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.research import router as research_router
 from app.api.v1.stream import router as stream_router
 from app.api.v1.sessions import router as sessions_router
+from app.api.v1.llm import router as llm_router
 
 api_router = APIRouter()
 
@@ -9,3 +10,4 @@ api_router = APIRouter()
 api_router.include_router(research_router, prefix="/research", tags=["Research"])
 api_router.include_router(stream_router, prefix="/research", tags=["Stream"])
 api_router.include_router(sessions_router, prefix="/sessions", tags=["Sessions"])
+api_router.include_router(llm_router, prefix="/llm", tags=["LLM"])

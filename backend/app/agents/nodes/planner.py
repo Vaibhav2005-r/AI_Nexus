@@ -3,7 +3,8 @@ from datetime import datetime
 import uuid
 from app.agents.state import ResearchState, AgentStepState
 from app.prompts.planner import PLANNER_PROMPT_TEMPLATE
-from app.infrastructure.gemini_client import GeminiClient
+from app.infrastructure.llm.factory import LLMFactory
+from app.domain.llm_models import PlannerResponse
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,24 +28,16 @@ async def planner_node(state: ResearchState) -> dict:
         past_research_context=past_research_context
     )
     
-    client = GeminiClient()
-    schema = {
-        "type": "OBJECT",
-        "properties": {
-            "strategy": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "domain_constraints": {"type": "ARRAY", "items": {"type": "STRING"}}
-        },
-        "required": ["strategy", "domain_constraints"]
-    }
+    client = LLMFactory.get_client()
     
-    result = await client.generate_structured(prompt, schema)
+    result = await client.generate_structured(prompt, PlannerResponse)
     
     if not result:
         logger.error("Planner received empty response from LLM")
         raise ValueError("AI failed to generate a research strategy. Please try again.")
         
-    strategy = result.get("strategy", [])
-    domain_constraints = result.get("domain_constraints", [])
+    strategy = result.strategy
+    domain_constraints = result.domain_constraints
     
     if not strategy:
         logger.error("Planner received invalid response format from LLM")

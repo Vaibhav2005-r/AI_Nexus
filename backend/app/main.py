@@ -41,6 +41,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 from app.api.router import api_router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+from app.services.health_service import HealthService
+
 @app.get("/health", tags=["System"])
 async def health_check():
-    return {"status": "healthy", "version": settings.VERSION}
+    health_data = await HealthService.check_all()
+    health_data["version"] = settings.VERSION
+    return health_data
