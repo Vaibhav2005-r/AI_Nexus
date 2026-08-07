@@ -8,16 +8,16 @@ import sys
 # Ensure we can import app
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.agents.graph import build_research_graph
+from app.agents.graph import app_graph
 from app.infrastructure.llm.factory import LLMFactory
 
 async def run_benchmark():
     print("Starting AI Nexus Benchmark...")
     print("LLM Provider:", os.getenv("LLM_PROVIDER", "nvidia"))
-    print("Fallback:", os.getenv("LLM_FALLBACK_PROVIDER", "gemini"))
+    print("Fallback:", os.getenv("LLM_FALLBACK_PROVIDER", ""))
     print("Verifier Max Sources:", os.getenv("VERIFIER_MAX_SOURCES", "10"))
     
-    graph = build_research_graph()
+    graph = app_graph
     
     queries = [
         "Analyze the correlation between extreme weather events and infrastructure degradation in India high-risk zones.",
@@ -33,7 +33,12 @@ async def run_benchmark():
         print(f"\n--- Run {i+1}/5 ---")
         print(f"Query: {query}")
         
-        state = {"query": query}
+        state = {
+            "query": query,
+            "depth": "Fast",
+            "domain_mode": "General",
+            "sources_filter": []
+        }
         start_time = time.time()
         
         try:

@@ -37,11 +37,19 @@ class TavilyClient(SearchProvider):
                         # Truncate raw content to roughly 2000 chars to protect token budget
                         raw_content = raw_content[:2000] + ("..." if len(raw_content) > 2000 else "")
                     
+                    # Safely extract domain from URL
+                    url = item.get("url", "")
+                    try:
+                        from urllib.parse import urlparse
+                        domain = urlparse(url).netloc or "unknown"
+                    except Exception:
+                        domain = "unknown"
+                    
                     results.append({
                         "source_agent": "web_search",
                         "title": item.get("title", ""),
-                        "url": item.get("url", ""),
-                        "domain": item.get("url", "").split("/")[2] if item.get("url") else "unknown",
+                        "url": url,
+                        "domain": domain,
                         "snippet": item.get("content", ""),
                         "raw_content": raw_content or None,
                         "publish_date": None,

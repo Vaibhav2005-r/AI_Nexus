@@ -24,6 +24,7 @@ class NvidiaClient(BaseLLMClient):
                 temperature=settings.LLM_TEMPERATURE,
                 top_p=0.95,
                 max_completion_tokens=settings.LLM_MAX_TOKENS,
+                timeout=settings.LLM_TIMEOUT,
             )
         else:
             self.client = None

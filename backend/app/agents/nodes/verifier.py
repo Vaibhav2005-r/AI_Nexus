@@ -49,30 +49,35 @@ async def verifier_node(state: ResearchState) -> dict:
             
         evidence_text += f"\n[Source {idx+1}] ({ev.get('domain', 'unknown')}) {ev.get('url', '')}\n{content_to_show}\n"
     
-    if not evidence_text:
-        evidence_text = "No evidence found."
+    if not evidence_text or not top_evidence:
+        logger.warning("No evidence found to verify, returning empty verification")
+        verified_claims = []
+        discarded_claims = []
+        contradictions = []
+        confidence_score = 0.0
+        agreement_percentage = 0.0
+    else:
+        prompt = VERIFIER_PROMPT_TEMPLATE.format(
+            query=state["query"],
+            raw_evidence=evidence_text
+        )
         
-    prompt = VERIFIER_PROMPT_TEMPLATE.format(
-        query=state["query"],
-        raw_evidence=evidence_text
-    )
-    
-    client = LLMFactory.get_client()
-    result = await client.generate_structured(prompt, VerifierResponse, timeout_seconds=180)
-    
-    if not result:
-        logger.error("Verifier received empty response from LLM")
-        raise ValueError("AI failed to verify the research evidence. Please try again.")
+        client = LLMFactory.get_client()
+        result = await client.generate_structured(prompt, VerifierResponse, timeout_seconds=180)
         
-    verified_claims = [c.model_dump() for c in result.verified_claims] if result.verified_claims else []
-    discarded_claims = [c.model_dump() for c in result.discarded_claims] if result.discarded_claims else []
-    contradictions = [c.model_dump() for c in result.contradictions] if result.contradictions else []
-    confidence_score = result.confidence_score
-    agreement_percentage = result.agreement_percentage
-    
-    if not verified_claims and not discarded_claims and not contradictions:
-        logger.error("Verifier received invalid response format from LLM")
-        raise ValueError("AI generated an invalid verification format.")
+        if not result:
+            logger.warning("Verifier received empty response from LLM, returning empty verification")
+            verified_claims = []
+            discarded_claims = []
+            contradictions = []
+            confidence_score = 0.0
+            agreement_percentage = 0.0
+        else:
+            verified_claims = [c.model_dump() for c in result.verified_claims] if result.verified_claims else []
+            discarded_claims = [c.model_dump() for c in result.discarded_claims] if result.discarded_claims else []
+            contradictions = [c.model_dump() for c in result.contradictions] if result.contradictions else []
+            confidence_score = result.confidence_score
+            agreement_percentage = result.agreement_percentage
     
     duration_ms = int((time.time() - start_time) * 1000)
     

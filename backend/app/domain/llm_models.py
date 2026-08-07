@@ -24,16 +24,16 @@ class VerifiedClaim(BaseModel):
 class DiscardedClaim(BaseModel):
     claim: str
     reason: str
-    original_source: str
+    original_source: Optional[str] = None
 
 class Contradiction(BaseModel):
-    id: str
+    id: Optional[str] = None
     claim_a: str
-    source_a: str
+    source_a: Optional[str] = None
     claim_b: str
-    source_b: str
-    resolution: str
-    winner: str
+    source_b: Optional[str] = None
+    resolution: Optional[str] = None
+    winner: Optional[str] = None
 
 class VerifierResponse(BaseModel):
     verified_claims: List[VerifiedClaim]

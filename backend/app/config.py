@@ -10,10 +10,10 @@ class Settings(BaseSettings):
     
     # Server
     HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    PORT: int = 8008
     ENV: str = "development"
     LOG_LEVEL: str = "INFO"
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173", "*"]
     
     # APIs
     GEMINI_API_KEY: str = ""
@@ -24,12 +24,12 @@ class Settings(BaseSettings):
     
     # LLM Settings
     LLM_PROVIDER: str = "nvidia"
-    LLM_FALLBACK_PROVIDER: str = "gemini"
-    LLM_MODEL: str = "google/gemma-4-31b-it"
+    LLM_FALLBACK_PROVIDER: str = ""
+    LLM_MODEL: str = "nvidia/llama-3.3-nemotron-super-49b-v1"
     LLM_TEMPERATURE: float = 0.2
     LLM_MAX_TOKENS: int = 8192
-    LLM_TIMEOUT: int = 300
-    LLM_RETRIES: int = 2
+    LLM_TIMEOUT: int = 600
+    LLM_RETRIES: int = 3
     
     # Verifier optimization
     VERIFIER_MAX_SOURCES: int = 10

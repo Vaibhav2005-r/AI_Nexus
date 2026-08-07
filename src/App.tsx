@@ -11,6 +11,8 @@ import { RawTraceModal } from './components/RawTraceModal';
 import { MOCK_SESSIONS, INITIAL_SETTINGS } from './data/mockResearchData';
 import { ResearchSession, AppSettings, AgentStep, SourceCitation, GlobalStats } from './types';
 
+const API_BASE = 'http://localhost:8008';
+
 export default function App() {
   const [sessions, setSessions] = useState<ResearchSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export default function App() {
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/v1/sessions?skip=0&limit=50');
+        const res = await fetch(`${API_BASE}/api/v1/sessions?skip=0&limit=50`);
         if (res.ok) {
           const data = await res.json();
           setSessions(data.sessions);
@@ -34,7 +36,7 @@ export default function App() {
     };
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/v1/sessions/stats');
+        const res = await fetch(`${API_BASE}/api/v1/sessions/stats`);
         if (res.ok) {
           const data = await res.json();
           setGlobalStats(data);
@@ -63,7 +65,7 @@ export default function App() {
     sourcesFilter: string[]
   ) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/research`, {
+      const res = await fetch(`${API_BASE}/api/v1/research`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, depth, deepWebEnabled: deepWeb, sourcesFilter, domainMode: 'General' }),
@@ -78,7 +80,7 @@ export default function App() {
       setSessions((prev) => [session, ...prev]);
       setActiveSessionId(session.id);
 
-      const eventSource = new EventSource(`http://localhost:8000/api/v1/research/${session.id}/stream`);
+      const eventSource = new EventSource(`${API_BASE}/api/v1/research/${session.id}/stream`);
 
       eventSource.addEventListener('step_update', (e) => {
         const { stepIndex, step } = JSON.parse(e.data);
@@ -129,7 +131,7 @@ export default function App() {
   const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/sessions/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/v1/sessions/${id}`, { method: 'DELETE' });
       if (res.ok) {
         const updated = sessions.filter((s) => s.id !== id);
         setSessions(updated);
@@ -144,7 +146,7 @@ export default function App() {
 
   const handleClearAllSessions = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/sessions`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/v1/sessions`, { method: 'DELETE' });
       if (res.ok) {
         setSessions([]);
         setActiveSessionId(null);
